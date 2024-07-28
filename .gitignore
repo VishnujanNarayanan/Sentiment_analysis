@@ -1,162 +1,140 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+#b1
+! pip install kaggle
+#b2
+!mkdir -p ~/.kaggle
+! cp kaggle.json ~/.kaggle/
+! chmod 600 ~/.kaggle/kaggle.json
+#b3
+!kaggle datasets download -d kazanova/sentiment140
+#b4
 
-# C extensions
-*.so
+from zipfile import ZipFile
+dataset ='/content/sentiment140.zip'
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+with ZipFile(dataset, 'r') as zip:
+  zip.extractall()
+  print('The dataset is extracted')
+#b5
+import numpy as np
+import pandas as pd
+import re
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+#b6
+import nltk
+nltk.download('stopwords')
+#b7
+#printing the stopwords
+print(stopwords.words('english'))
+#b8
+#loading data from csv file to pandas dataframe
+twitter_data =pd.read_csv('/content/training.1600000.processed.noemoticon.csv', encoding ='ISO-8859-1')
+#b9
+#checking the number of rows and columns
+twitter_data.shape
+#b10
+#printing first 5 rows
+twitter_data.head()
+#b11
+#naming the columns and read dataset again
+column_names = ['target','id','date','flag','user','text']
+twitter_data=pd.read_csv('/content/training.1600000.processed.noemoticon.csv',names=column_names,encoding='ISO-8859-1')
+#b12
+#checking the number of rows and columns
+twitter_data.shape
+#b13
+#checking if there are any missing values
+twitter_data.isnull().sum()
+#b14
+#checking the distribution of target columns
+twitter_data['target'].value_counts()
+#b15
+#converting target 4 to 1
+twitter_data.replace({'target':{4:1}}, inplace=True)
+#b16
+#checking the distribution of target columns
+twitter_data['target'].value_counts()
+#b17
+port_stem = PorterStemmer()
+#b18
+def stemming(content):
+  stemmed_content=re.sub('[^a-zA-Z]',' ',content)
+  stemmed_content=stemmed_content.lower()
+  stemmed_content=stemmed_content.split()
+  stemmed_content=[port_stem.stem(word) for word in stemmed_content if not word in stopwords.words('english')]
+  stemmed_content=' '.join(stemmed_content) 
+  return stemmed_content
+#b19
+#applying the stemming function
+twitter_data['stemmed_content']= twitter_data['text'].apply(stemming)
+#b20
+twitter_data.head()
+#b21
+print(twitter_data['stemmed_content'])
+#b22
+print(twitter_data['target'])
+#b23
+#separating data and label
+X=twitter_data['stemmed_content'].values
+Y=twitter_data['target'].values
+#b24
+print(X)
+#b25
+print(Y)
+#b26
+X_train, X_test, Y_train, Y_test= train_test_split(X,Y,test_size=0.02, stratify=Y,random_state=2)
+print(X.shape,X_train.shape,X_test.shape)
+#b27
+print(X_train)
+#b28
+print(X_test)
+#b29
+#converting the textual data to numerical data
+vectorizer= TfidfVectorizer()
+X_train=vectorizer.fit_transform(X_train)
+X_test=vectorizer.transform(X_test)
+#b30
+print(X_train)
+#b31
+print(X_test)
+#b32
+model=LogisticRegression(max_iter=10000)
+#b33
+model.fit(X_train,Y_train)
+#b34
+#accuracy score on the training data
+X_train_prediction=model.predict(X_train)
+training_data_accuracy=accuracy_score(Y_train,X_train_prediction)
+#b35
+print('acccuracy score on the training data:',training_data_accuracy)
+#b36
+#accuracy score on the test data
+X_test_prediction=model.predict(X_test)
+test_data_accuracy=accuracy_score(Y_test,X_test_prediction)
+#b37
+print('acccuracy score on the test data:',test_data_accuracy)
+#b38
+import pickle
+#b39
+filename='trained_model.sav'
+pickle.dump(model,open(filename,'wb'))
+#b40
+#loading the saved model
+loaded_model=pickle.load(open('/content/trained_model.sav','rb'))
+#b41
+X_new= X_test[4]
+print(X[4])
+print(Y_test[4])
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+prediction=model.predict(X_new)
+print(prediction)
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+if(prediction[0]==0):
+  print('Negative tweet')
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
-.pdm.toml
-.pdm-python
-.pdm-build/
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+else:
+  print('Positive tweet')
